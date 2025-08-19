@@ -1,7 +1,11 @@
 db_data/
 *.log
-wo-content/uploads/
+wp-content/*.php
+wp-content/uploads/
 wp-content/cache/
+wp-content/plugins/*.php
+wp-content/plugins/akismet/
+wp-content/themes/
 
 .DS_Store
 .vscode/

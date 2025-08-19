@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   wordpress:
     image: wordpress:6.5-php8.2
@@ -11,6 +9,7 @@ services:
       WORDPRESS_DB_USER: wordpress
       WORDPRESS_DB_PASSWORD: wordpress
       WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DEBUG: true
     volumes:
       - ./wp-content:/var/www/html/wp-content
     depends_on:
