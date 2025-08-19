@@ -1,0 +1,7 @@
+db_data/
+*.log
+wo-content/uploads/
+wp-content/cache/
+
+.DS_Store
+.vscode/
