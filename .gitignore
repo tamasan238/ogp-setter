@@ -5,6 +5,7 @@ wp-content/uploads/
 wp-content/cache/
 wp-content/plugins/*.php
 wp-content/plugins/akismet/
+wp-content/plugins/wordpress-seo/
 wp-content/themes/
 
 .DS_Store

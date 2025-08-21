@@ -1,5 +1,5 @@
 const { registerPlugin } = wp.plugins;
-const { PluginSidebar } = wp.editor;
+const { PluginSidebar } = wp.editPost;
 const { PanelBody, Button, Spinner } = wp.components;
 const { createElement, useState } = wp.element;
 const { select, dispatch } = wp.data;
@@ -9,13 +9,11 @@ const CustomSidebar = () => {
 
     const handleClick = async () => {
         setLoading(true);
-
-        // Get the title of the currently edited post
         const post = select('core/editor').getCurrentPost();
+        const postId = post.id;
         const title = post.title;
 
         try {
-            // Send to PHP REST API
             const response = await fetch(
                 wpApiSettings.root + 'ogp-setter/v1/generate-ogp',
                 {
@@ -24,19 +22,23 @@ const CustomSidebar = () => {
                         'Content-Type': 'application/json',
                         'X-WP-Nonce': wpApiSettings.nonce,
                     },
-                    body: JSON.stringify({ title }),
+                    body: JSON.stringify({ title, post_id: postId }),
                 }
             );
 
             const data = await response.json();
 
             if (data.success) {
-                // Set as featured image
-                dispatch('core/editor').editPost({ featured_media: data.attachment_id });
-                alert('OGP image has been set as the featured image!');
+                dispatch('core/editor').editPost({
+                    meta: {
+                        _custom_og_image: data.url
+                    }
+                });
+                alert('OGP image has been set!');
             } else {
-                alert('Failed to generate OGP (js): ' + data.message);
+                alert('Failed to generate OGP: ' + data.message);
             }
+
         } catch (err) {
             console.error(err);
             alert('An error occurred');
@@ -47,11 +49,7 @@ const CustomSidebar = () => {
 
     return createElement(
         PluginSidebar,
-        {
-            name: 'custom-sidebar',
-            title: 'OGP Setter (for JP)',
-            icon: 'lightbulb',
-        },
+        { name: 'custom-sidebar', title: 'OGP Setter', icon: 'lightbulb' },
         createElement(
             PanelBody,
             { initialOpen: true },
@@ -80,6 +78,4 @@ const CustomSidebar = () => {
     );
 };
 
-registerPlugin('custom-sidebar', {
-    render: CustomSidebar,
-});
+registerPlugin('custom-sidebar', { render: CustomSidebar });

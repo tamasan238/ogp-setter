@@ -2,7 +2,7 @@
 /**
  * Plugin Name: OGP Setter
  * Description: Automatically generates and sets OGP images from article titles with a click.
- * Version: 1.0
+ * Version: 1.1
  * Author: Masaki Iwai
  */
 
@@ -25,6 +25,8 @@ function ceb_enqueue_block_editor_assets() {
     );
 }
 add_action( 'enqueue_block_editor_assets', 'ceb_enqueue_block_editor_assets' );
+
+
 add_action('rest_api_init', function () {
     register_rest_route('ogp-setter/v1', '/generate-ogp', array(
         'methods' => 'POST',
@@ -37,9 +39,11 @@ add_action('rest_api_init', function () {
 
 function ogp_setter_generate($request) {
     try {
-        $title = sanitize_text_field($request->get_param('title'));
+        $title   = sanitize_text_field($request->get_param('title'));
+        $post_id = intval($request->get_param('post_id'));
+
         $upload_dir = wp_upload_dir();
-        $file_path = $upload_dir['path'] . '/ogp.png';
+        $file_path  = $upload_dir['path'] . '/ogp-' . time() . '.png';
 
         $ch = curl_init('http://host.docker.internal:8082/ogp?title=' . urlencode($title));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -49,9 +53,9 @@ function ogp_setter_generate($request) {
 
         $attachment = array(
             'post_mime_type' => 'image/png',
-            'post_title' => $title,
-            'post_content' => '',
-            'post_status' => 'inherit'
+            'post_title'     => $title,
+            'post_content'   => '',
+            'post_status'    => 'inherit'
         );
         $attach_id = wp_insert_attachment($attachment, $file_path);
 
@@ -62,12 +66,34 @@ function ogp_setter_generate($request) {
         require_once(ABSPATH . 'wp-admin/includes/image.php');
         $attach_data = wp_generate_attachment_metadata($attach_id, $file_path);
         wp_update_attachment_metadata($attach_id, $attach_data);
-        set_post_thumbnail($request->get_param('post_id'), $attach_id);
 
-        return array('success' => true, 'attachment_id' => $attach_id);
+        $image_url = wp_get_attachment_url($attach_id);
+
+        update_post_meta($post_id, '_custom_og_image', $image_url);
+
+        return array(
+            'success'       => true,
+            'attachment_id' => $attach_id,
+            'url'           => $image_url,
+        );
     } catch (Exception $e) {
         error_log($e->getMessage());
         return new WP_Error('ogp_error', $e->getMessage(), array('status' => 500));
     }
 }
 
+add_action('wp_head', function() {
+    if (is_singular()) {
+        global $post;
+        $og_image = get_post_meta($post->ID, '_custom_og_image', true);
+        if ($og_image) {
+            echo '<meta property="og:title" content="' . esc_attr(get_the_title()) . '" />' . "\n";
+            echo '<meta property="og:description" content="' . esc_attr(get_the_excerpt()) . '" />' . "\n";
+            echo '<meta property="og:url" content="' . esc_url(get_permalink()) . '" />' . "\n";
+            echo '<meta property="og:type" content="article" />' . "\n";
+            echo '<meta property="og:image" content="' . esc_url($og_image) . '" />' . "\n";
+            echo '<meta name="twitter:card" content="summary_large_image" />' . "\n";
+            echo '<meta name="twitter:image" content="' . esc_url($og_image) . '" />' . "\n";
+        }
+    }
+});
